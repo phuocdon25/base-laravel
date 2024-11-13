@@ -1,0 +1,74 @@
+name: Laravel CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - staging
+
+jobs:
+  build:
+    name: CI
+    runs-on: ubuntu-latest
+    env:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: laravel
+      MYSQL_USER: laravel-user
+      MYSQL_PASSWORD: secret
+
+    
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ env.MYSQL_ROOT_PASSWORD }}
+          MYSQL_DATABASE: ${{ env.MYSQL_DATABASE }}
+          MYSQL_USER: ${{ env.MYSQL_USER }}
+          MYSQL_PASSWORD: ${{ env.MYSQL_PASSWORD }}
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.2
+
+      - name: Install dependencies
+        run: composer install
+      
+      - name: Install Frontend dependencies
+        run: npm install
+
+      - name: Build Frontend
+        run: npm run build
+
+      - name: Copy environment file
+        run: cp .env.example .env
+      - name: Update Laravel .env
+        run: |
+          echo "DB_CONNECTION=mysql" >> .env
+          echo "DB_HOST=127.0.0.1" >> .env
+          echo "DB_PORT=3306" >> .env
+          echo "DB_DATABASE=${{ env.MYSQL_DATABASE }}" >> .env
+          echo "DB_USERNAME=${{ env.MYSQL_USER }}" >> .env
+          echo "DB_PASSWORD=${{ env.MYSQL_PASSWORD }}" >> .env
+
+      - name: Generate application key
+        run: php artisan key:generate
+
+      - name: Run database migrations
+        run: php artisan migrate
+
+      - name: Validate Format code
+        run: ./vendor/bin/pint
+
+      - name: Run tests
+        run: vendor/bin/phpunit
+
+
