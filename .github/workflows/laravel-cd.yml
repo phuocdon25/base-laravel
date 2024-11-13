@@ -69,6 +69,6 @@ jobs:
         run: ./vendor/bin/pint
 
       - name: Run tests
-        run: vendor/bin/phpunit
+        run: ./vendor/bin/pest
 
 
